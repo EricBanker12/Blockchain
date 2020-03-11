@@ -81,43 +81,46 @@ if __name__ == '__main__':
     my_coins = 0
 
     # Run forever until interrupted
-    while True:
-        r = requests.get(url=node + "/last_block")
-        # Handle non-json response
-        try:
+    try:
+        while True:
+            r = requests.get(url=node + "/last_block")
+            # Handle non-json response
+            try:
+                data = r.json()
+            except ValueError:
+                print("Error:  Non-json response")
+                print("Response returned:")
+                print(r)
+                break
+
+            # Get the block from `data` and use it to look for a new proof
+            start_time = time.time()
+            q = Queue()
+            jobs = []
+            print('Starting workers')
+            for i in range(12):
+                p = Process(target=proof_worker, args=(data['lastBlock'], i*(16**6), q))
+                jobs.append(p)
+                p.start()
+            new_proof = q.get(True)
+            # new_proof = proof_of_work(data['lastBlock'])
+            print('Stopping workers:', time.time() - start_time, 's')
+            for p in jobs:
+                p.kill()
+
+            # When found, POST it to the server {"proof": new_proof, "id": id}
+            post_data = {"proof": new_proof, "id": id}
+
+            r = requests.post(url=node + "/mine", json=post_data)
             data = r.json()
-        except ValueError:
-            print("Error:  Non-json response")
-            print("Response returned:")
-            print(r)
-            break
 
-        # Get the block from `data` and use it to look for a new proof
-        start_time = time.time()
-        q = Queue()
-        jobs = []
-        print('Starting workers')
-        for i in range(12):
-            p = Process(target=proof_worker, args=(data['lastBlock'], i*(16**6), q))
-            jobs.append(p)
-            p.start()
-        new_proof = q.get(True)
-        # new_proof = proof_of_work(data['lastBlock'])
-        print('Stopping workers:', time.time() - start_time, 's')
-        for p in jobs:
-            p.kill()
-
-        # When found, POST it to the server {"proof": new_proof, "id": id}
-        post_data = {"proof": new_proof, "id": id}
-
-        r = requests.post(url=node + "/mine", json=post_data)
-        data = r.json()
-
-        # If the server responds with a 'message' 'New Block Forged'
-        # add 1 to the number of coins mined and print it.  Otherwise,
-        # print the message from the server.
-        if data['message'] == 'New Block Forged':
-            my_coins += 1
-            print('Coins mined: ', my_coins)
-        else:
-            print(data['message'])
+            # If the server responds with a 'message' 'New Block Forged'
+            # add 1 to the number of coins mined and print it.  Otherwise,
+            # print the message from the server.
+            if data['message'] == 'New Block Forged':
+                my_coins += 1
+                print('Coins mined: ', my_coins)
+            else:
+                print(data['message'])
+    except KeyboardInterrupt:
+        print('KeyboardInterrupt: process was terminated.')

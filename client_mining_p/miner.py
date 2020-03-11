@@ -1,11 +1,11 @@
 import hashlib
 import requests
-
 import sys
 import json
 import os
 import time
 
+from multiprocessing import Queue, Process
 
 def proof_of_work(block):
     """
@@ -41,6 +41,29 @@ def valid_proof(block_string, proof):
     return guess_hash[:6] == "000000"
 
 
+def proof_worker(block, start, q):
+    """
+    Simple Proof of Work Algorithm
+    Stringify the block and look for a proof.
+    Loop through possibilities, checking each one against `valid_proof`
+    in an effort to find a number that is a valid proof
+    :return: A valid proof for the provided block
+    """
+    block_string = json.dumps(block, sort_keys=True)
+
+    proof = start
+    while True:
+        guess = f'{block_string}{proof}'.encode()
+        guess_hash = hashlib.sha256(guess).hexdigest()
+
+        if guess_hash[:6] == "000000":
+            q.put(proof)
+            return
+
+        proof += 1
+
+
+
 if __name__ == '__main__':
     # What is the server address? IE `python3 miner.py https://server.com/api/`
     if len(sys.argv) > 1:
@@ -70,10 +93,19 @@ if __name__ == '__main__':
             break
 
         # Get the block from `data` and use it to look for a new proof
-        print('Starting worker')
         start_time = time.time()
-        new_proof = proof_of_work(data['lastBlock'])
-        print('Stopping worker:', time.time() - start_time, 's')
+        q = Queue()
+        jobs = []
+        print('Starting workers')
+        for i in range(12):
+            p = Process(target=proof_worker, args=(data['lastBlock'], i*(16**6), q))
+            jobs.append(p)
+            p.start()
+        new_proof = q.get(True)
+        # new_proof = proof_of_work(data['lastBlock'])
+        print('Stopping workers:', time.time() - start_time, 's')
+        for p in jobs:
+            p.kill()
 
         # When found, POST it to the server {"proof": new_proof, "id": id}
         post_data = {"proof": new_proof, "id": id}

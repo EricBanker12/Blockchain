@@ -113,7 +113,7 @@ blockchain = Blockchain()
 def mine():
     data = request.get_json()
 
-    if not data['proof'] or not data['id']:
+    if not 'proof' in data or not 'id' in data:
         return jsonify({'message': 'Missing "proof" or "id"'}), 400
 
     # Forge the new Block by adding it to the chain with the proof

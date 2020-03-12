@@ -1,4 +1,4 @@
-import sys
+import math
 import os
 import requests
 
@@ -36,10 +36,11 @@ def main():
     def show_ui(page=1):
         print('Lambda Wallet')
         print('id:', my_id)
-        print('balance:', my_balance)
-        print(f'transactions (page {page}):')
+        print('balance:', my_balance, 'Lambda Coin')
+        print(f'transactions (page {page}/{math.ceil(len(my_transactions)/10)}):')
+        print('<sender> -> <recipient> : <amount>')
         for transaction in my_transactions[(page-1)*10:(page-1)*10+10]:
-            print(transaction)
+            print(f'{transaction["sender"]} -> {transaction["recipient"]} : {transaction["amount"]} Lambda Coin')
 
     page = 1
 

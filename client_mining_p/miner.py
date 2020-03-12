@@ -98,7 +98,7 @@ if __name__ == '__main__':
             q = Queue()
             jobs = []
             print('Starting workers')
-            for i in range(12):
+            for i in range(11):
                 p = Process(target=proof_worker, args=(data['lastBlock'], i*(16**6), q))
                 jobs.append(p)
                 p.start()

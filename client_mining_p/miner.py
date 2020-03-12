@@ -42,7 +42,7 @@ def valid_proof(block_string, proof):
     return guess_hash[:6] == "000000"
 
 
-def proof_worker(block, q):
+def proof_worker(block, i, q):
     """
     Simple Proof of Work Algorithm
     Stringify the block and look for a proof.
@@ -52,7 +52,7 @@ def proof_worker(block, q):
     """
     block_string = json.dumps(block, sort_keys=True)
 
-    proof = random.randint(0, os.cpu_count() * 10000) * 16**6
+    proof = i*(16**6)
     while True:
         guess = f'{block_string}{proof}'.encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
@@ -98,9 +98,10 @@ if __name__ == '__main__':
             start_time = time.time()
             q = Queue()
             jobs = []
+            rand_offset = random.randint(0,99)
             print('Starting workers')
             for i in range(os.cpu_count() - 1):
-                p = Process(target=proof_worker, args=(data['lastBlock'], q))
+                p = Process(target=proof_worker, args=(data['lastBlock'], rand_offset + i, q))
                 jobs.append(p)
                 p.start()
             new_proof = q.get(True)

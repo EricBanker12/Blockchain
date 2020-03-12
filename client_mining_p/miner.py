@@ -4,6 +4,7 @@ import sys
 import json
 import os
 import time
+import random
 
 from multiprocessing import Queue, Process
 
@@ -41,7 +42,7 @@ def valid_proof(block_string, proof):
     return guess_hash[:6] == "000000"
 
 
-def proof_worker(block, start, q):
+def proof_worker(block, q):
     """
     Simple Proof of Work Algorithm
     Stringify the block and look for a proof.
@@ -51,7 +52,7 @@ def proof_worker(block, start, q):
     """
     block_string = json.dumps(block, sort_keys=True)
 
-    proof = start
+    proof = random.randint(0, os.cpu_count() * 10000) * 16**6
     while True:
         guess = f'{block_string}{proof}'.encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
@@ -98,8 +99,8 @@ if __name__ == '__main__':
             q = Queue()
             jobs = []
             print('Starting workers')
-            for i in range(11):
-                p = Process(target=proof_worker, args=(data['lastBlock'], i*(16**6), q))
+            for i in range(os.cpu_count() - 1):
+                p = Process(target=proof_worker, args=(data['lastBlock'], q))
                 jobs.append(p)
                 p.start()
             new_proof = q.get(True)
